@@ -29,6 +29,6 @@ public class User {
     @Column(nullable = false)
     private String phoneNumber;
 
-    @OneToMany(mappedBy = "user_id", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Booking> bookings;
 }
