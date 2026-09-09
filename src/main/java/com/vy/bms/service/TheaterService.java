@@ -4,6 +4,7 @@ import com.vy.bms.dto.TheaterDto;
 import com.vy.bms.exception.ResourceNotFoundException;
 import com.vy.bms.model.Theater;
 import com.vy.bms.repository.TheaterRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
 @Service
 public class TheaterService {
 
+    @Autowired
     private TheaterRepository theaterRepository;
 
 

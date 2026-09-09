@@ -4,6 +4,7 @@ import com.vy.bms.dto.BookingDto;
 import com.vy.bms.dto.BookingRequestDto;
 import com.vy.bms.service.BookingService;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,7 +12,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/bookings")
 public class BookingController {
-    BookingService bookingService;
+
+    @Autowired
+    private BookingService bookingService;
 
     @PostMapping
     public ResponseEntity<BookingDto> createBooking(@Valid @RequestBody BookingRequestDto bookingRequest) {
