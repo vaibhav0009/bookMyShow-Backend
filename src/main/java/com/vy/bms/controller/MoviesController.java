@@ -35,5 +35,36 @@ public class MoviesController {
         return ResponseEntity.ok(movieService.getAllMovies());
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<MovieDto>> searchMovies(@RequestParam String title)
+    {
+        return ResponseEntity.ok(movieService.searchMovies(title));
+    }
+
+    @GetMapping("/language/{language}")
+    public ResponseEntity<List<MovieDto>> getMoviesByLanguage(@PathVariable String language)
+    {
+        return ResponseEntity.ok(movieService.getMovieByLanguage(language));
+    }
+
+    @GetMapping("/genre/{genre}")
+    public ResponseEntity<List<MovieDto>> getMoviesByGenre(@PathVariable String genre)
+    {
+        return ResponseEntity.ok(movieService.getMovieByGenre(genre));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<MovieDto> updateMovie(@PathVariable Long id, @Valid @RequestBody MovieDto movieDto)
+    {
+        return ResponseEntity.ok(movieService.updateMovie(id, movieDto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMovie(@PathVariable Long id)
+    {
+        movieService.deleteMovie(id);
+        return ResponseEntity.noContent().build();
+    }
+
 
 }

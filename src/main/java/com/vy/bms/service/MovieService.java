@@ -5,6 +5,7 @@ import com.vy.bms.dto.MovieDto;
 import com.vy.bms.exception.ResourceNotFoundException;
 import com.vy.bms.model.Movie;
 import com.vy.bms.repository.MovieRepository;
+import com.vy.bms.repository.ShowRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,9 @@ public class MovieService {
 
     @Autowired
     private MovieRepository movieRepository;
+
+    @Autowired
+    private ShowRepository showRepository;
 
 
     public MovieDto createMovie(MovieDto movieDto) {
@@ -86,6 +90,9 @@ public class MovieService {
     {
         Movie movie=movieRepository.findById(id)
                 .orElseThrow(()->new ResourceNotFoundException("Movie not found with id : "+id));
+        if (!showRepository.findByMovieId(id).isEmpty()) {
+            throw new IllegalStateException("Cannot delete a movie that has shows scheduled");
+        }
         movieRepository.delete(movie);
     }
 

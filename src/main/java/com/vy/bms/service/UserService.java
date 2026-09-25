@@ -2,6 +2,7 @@ package com.vy.bms.service;
 
 
 import com.vy.bms.dto.UserDto;
+import com.vy.bms.dto.UserRegisterDto;
 import com.vy.bms.exception.ResourceNotFoundException;
 import com.vy.bms.model.User;
 import com.vy.bms.repository.UserRepository;
@@ -17,9 +18,12 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
-    private UserDto createUser(UserDto userDto)
+    public UserDto createUser(UserRegisterDto userRegisterDto)
     {
-        User user=mapToEntity(userDto);
+        if (userRepository.existsByEmail(userRegisterDto.getEmail())) {
+            throw new IllegalStateException("Email is already registered");
+        }
+        User user=mapToEntity(userRegisterDto);
         User savedUser=userRepository.save(user);
         return mapToDto(savedUser);
     }
@@ -27,7 +31,7 @@ public class UserService {
     public UserDto getUserById(Long id)
     {
         User user=userRepository.findById(id)
-                .orElseThrow(()->new ResourceNotFoundException("Use not found with id: "+id));
+                .orElseThrow(()->new ResourceNotFoundException("User not found with id: "+id));
         return mapToDto(user);
     }
 
@@ -42,10 +46,11 @@ public class UserService {
     //update user
     //delete user
 
-    private User mapToEntity(UserDto userDto) {
+    private User mapToEntity(UserRegisterDto userDto) {
         User user=new User();
         user.setEmail(userDto.getEmail());
         user.setName(userDto.getName());
+        user.setPassword(userDto.getPassword());
         user.setPhoneNumber(userDto.getPhoneNumber());
         return  user;
     }

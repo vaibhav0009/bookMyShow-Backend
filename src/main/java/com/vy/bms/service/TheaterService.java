@@ -31,7 +31,7 @@ public class TheaterService {
         return mapToDto(theater);
     }
 
-    private List<TheaterDto> getAllTheaters()
+    public List<TheaterDto> getAllTheaters()
     {
         List<Theater> theaters=theaterRepository.findAll();
         return theaters.stream()
@@ -39,7 +39,7 @@ public class TheaterService {
                 .collect(Collectors.toList());
     }
 
-    private List<TheaterDto> getAllTheaterByCity(String city)
+    public List<TheaterDto> getAllTheaterByCity(String city)
     {
         List<Theater> theaters=theaterRepository.findByCity(city);
         return theaters.stream()

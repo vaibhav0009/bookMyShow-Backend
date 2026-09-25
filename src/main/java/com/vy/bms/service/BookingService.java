@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -33,6 +34,7 @@ public class BookingService {
     @Autowired
     private BookingRepository bookingRepository;
 
+    @Transactional
     public BookingDto createBooking(BookingRequestDto bookingRequest) {
         User user = userRepository.findById(bookingRequest.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User Not Found"));
@@ -41,11 +43,22 @@ public class BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Show Not Found"));
 
 
-        List<ShowSeat> selectedSeats = showSeatRepository.findAllById(bookingRequest.getSeatIds());
+        List<Long> seatIds = bookingRequest.getSeatIds();
+        if (seatIds == null || seatIds.isEmpty()) {
+            throw new SeatUnavailableException("Please select at least one seat");
+        }
+
+        List<ShowSeat> selectedSeats = showSeatRepository.findAllById(seatIds);
+        if (selectedSeats.size() != new HashSet<>(seatIds).size()) {
+            throw new ResourceNotFoundException("One or more selected seats were not found");
+        }
 
         for(ShowSeat seat : selectedSeats) {
+            if (!seat.getShow().getId().equals(show.getId())) {
+                throw new SeatUnavailableException("Seat " + seat.getSeat().getSeatNumber() + " does not belong to this show");
+            }
             if(!"AVAILABLE".equals(seat.getStatus())) {
-                throw new SeatUnavailableException("Seat" + seat.getSeat().getSeatNumber() + "is not available");
+                throw new SeatUnavailableException("Seat " + seat.getSeat().getSeatNumber() + " is not available");
             }
 
             seat.setStatus("LOCKED");
@@ -90,33 +103,27 @@ public class BookingService {
     {
         Booking booking=bookingRepository.findById(id)
                 .orElseThrow(()->new ResourceNotFoundException("Booking Not Found"));
-        List<ShowSeat> seats=showSeatRepository.findAll()
-                .stream().
-                filter(seat->seat.getBooking()!=null && seat.getBooking().getId().equals(booking.getId()))
-                .collect(Collectors.toList());
+        List<ShowSeat> seats=showSeatRepository.findByBookingId(booking.getId());
         return mapToBookingDto(booking,seats);
     }
 
-    private BookingDto getBookingByNumber(String bookingNumber)
+    public BookingDto getBookingByNumber(String bookingNumber)
     {
         Booking booking=bookingRepository.findByBookingNumber(bookingNumber)
                 .orElseThrow(()->new ResourceNotFoundException("Booking Not Found"));
-        List<ShowSeat> seats=showSeatRepository.findAll()
-                .stream().
-                filter(seat->seat.getBooking()!=null && seat.getBooking().getId().equals(booking.getId()))
-                .collect(Collectors.toList());
+        List<ShowSeat> seats=showSeatRepository.findByBookingId(booking.getId());
         return mapToBookingDto(booking,seats);
     }
 
-    private List<BookingDto> getBookingByUserId(Long userId)
+    public List<BookingDto> getBookingByUserId(Long userId)
     {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User Not Found");
+        }
         List<Booking> bookings = bookingRepository.findByUserId(userId);
         return bookings.stream()
                 .map(booking -> {
-                    List<ShowSeat> seats=showSeatRepository.findAll()
-                            .stream().
-                            filter(seat->seat.getBooking()!=null && seat.getBooking().getId().equals(booking.getId()))
-                            .collect(Collectors.toList());
+                    List<ShowSeat> seats=showSeatRepository.findByBookingId(booking.getId());
                     return mapToBookingDto(booking,seats);
                 })
                 .collect(Collectors.toList());
@@ -129,12 +136,13 @@ public class BookingService {
         Booking booking=bookingRepository.findById(id)
                 .orElseThrow(()->new ResourceNotFoundException("Booking Not found"));
 
+        if ("CANCELLED".equals(booking.getStatus())) {
+            throw new IllegalStateException("Booking is already cancelled");
+        }
+
         booking.setStatus("CANCELLED");
 
-        List<ShowSeat> seats=showSeatRepository.findAll()
-                .stream()
-                .filter(seat->seat.getBooking()!=null && seat.getBooking().getId().equals(booking.getId()))
-                .collect(Collectors.toList());
+        List<ShowSeat> seats=showSeatRepository.findByBookingId(booking.getId());
 
         seats.forEach(seat->{
             seat.setStatus("AVAILABLE");
@@ -193,12 +201,13 @@ public class BookingService {
         screenDto.setName(booking.getShow().getScreen().getName());
         screenDto.setTotalSeats(booking.getShow().getScreen().getTotalSeats());
 
+        Theater theater = booking.getShow().getScreen().getTheater();
         TheaterDto theaterDto = new TheaterDto();
-        theaterDto.setId(bookingDto.getShow().getScreen().getTheater().getId());
-        theaterDto.setAddress(bookingDto.getShow().getScreen().getTheater().getAddress());
-        theaterDto.setCity(bookingDto.getShow().getScreen().getTheater().getCity());
-        theaterDto.setName(bookingDto.getShow().getScreen().getTheater().getName());
-        theaterDto.setTotalScreens(bookingDto.getShow().getScreen().getTheater().getTotalScreens());
+        theaterDto.setId(theater.getId());
+        theaterDto.setAddress(theater.getAddress());
+        theaterDto.setCity(theater.getCity());
+        theaterDto.setName(theater.getName());
+        theaterDto.setTotalScreens(theater.getTotalScreens());
 
         screenDto.setTheater(theaterDto);
         showDto.setScreen(screenDto);

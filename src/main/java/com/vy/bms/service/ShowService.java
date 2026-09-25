@@ -4,12 +4,15 @@ import com.vy.bms.dto.*;
 import com.vy.bms.exception.ResourceNotFoundException;
 import com.vy.bms.model.Movie;
 import com.vy.bms.model.Screen;
+import com.vy.bms.model.Seat;
 import com.vy.bms.model.Show;
 import com.vy.bms.model.ShowSeat;
 import com.vy.bms.repository.MovieRepository;
 import com.vy.bms.repository.ScreenRepository;
+import com.vy.bms.repository.SeatRepository;
 import com.vy.bms.repository.ShowRepository;
 import com.vy.bms.repository.ShowSeatRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -32,21 +35,53 @@ public class ShowService {
     @Autowired
     private ShowSeatRepository showSeatRepository;
 
-    public ShowDto creteShow(ShowDto showDto)
+    @Autowired
+    private SeatRepository seatRepository;
+
+    @Transactional
+    public ShowDto createShow(ShowRequestDto request)
     {
-        Show show=new Show();
-        Movie movie=movieRepository.findById(showDto.getMovie().getId())
+        Movie movie=movieRepository.findById(request.getMovieId())
                 .orElseThrow(()-> new ResourceNotFoundException("Movie Not Found"));
 
-        Screen screen=screenRepository.findById(showDto.getScreen().getId())
+        Screen screen=screenRepository.findById(request.getScreenId())
                 .orElseThrow(()-> new ResourceNotFoundException("Screen Not Found"));
 
+        if (!request.getEndTime().isAfter(request.getStartTime())) {
+            throw new IllegalStateException("End time must be after start time");
+        }
+
+        boolean overlaps=showRepository.findByScreenId(screen.getId()).stream()
+                .anyMatch(existing -> request.getStartTime().isBefore(existing.getEndTime())
+                        && request.getEndTime().isAfter(existing.getStartTime()));
+        if (overlaps) {
+            throw new IllegalStateException("Another show is already scheduled on this screen at that time");
+        }
+
+        List<Seat> screenSeats=seatRepository.findByScreenId(screen.getId());
+        if (screenSeats.isEmpty()) {
+            throw new IllegalStateException("This screen has no seats configured");
+        }
+
+        Show show=new Show();
         show.setMovie(movie);
         show.setScreen(screen);
-        show.setStartTime(showDto.getStartTime());
-        show.setEndTime(showDto.getEndTime());
+        show.setStartTime(request.getStartTime());
+        show.setEndTime(request.getEndTime());
 
         Show savedShow=showRepository.save(show);
+
+        List<ShowSeat> showSeats=screenSeats.stream()
+                .map(seat -> {
+                    ShowSeat showSeat=new ShowSeat();
+                    showSeat.setShow(savedShow);
+                    showSeat.setSeat(seat);
+                    showSeat.setStatus("AVAILABLE");
+                    showSeat.setPrice(seat.getBasePrice());
+                    return showSeat;
+                })
+                .collect(Collectors.toList());
+        showSeatRepository.saveAll(showSeats);
 
         List<ShowSeat> availableSeats=
                 showSeatRepository.findByShowIdAndStatus(savedShow.getId(),"AVAILABLE");

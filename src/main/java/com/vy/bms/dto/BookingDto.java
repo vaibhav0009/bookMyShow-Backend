@@ -14,7 +14,7 @@ import java.util.List;
 public class BookingDto {
     private Long id;
     private String bookingNumber;
-    private LocalDateTime BookingTime;
+    private LocalDateTime bookingTime;
     private UserDto user;
     private ShowDto show;
     private String status;
